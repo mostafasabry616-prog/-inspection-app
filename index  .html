@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cement Plant · Daily Inspection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background: #eef1f5; padding: 15px; min-height: 100vh; display: flex; flex-direction: column; }
+        .app-container { max-width: 1600px; margin: 0 auto; width: 100%; background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding: 15px; display: flex; flex-direction: column; gap: 15px; flex: 1; }
+        h1 { font-size: 1.4rem; color: #1e3c5c; display: flex; align-items: center; gap: 10px; }
+        
+        /* شريط التاريخ الجديد */
+        .date-bar { display: flex; align-items: center; gap: 10px; background: #fff3e0; padding: 10px 15px; border-radius: 10px; border: 1px solid #ffcc80; font-weight: bold; color: #e65100; }
+        .date-bar input { padding: 5px 10px; border-radius: 5px; border: 1px solid #cbd5e1; font-size: 1rem; font-weight: bold; }
+
+        .toolbar { display: flex; flex-wrap: wrap; gap: 10px; background: #f8fafd; padding: 10px; border-radius: 10px; border: 1px solid #d9e1ec; }
+        .search-filter { display: flex; flex-wrap: wrap; gap: 10px; flex: 2; }
+        .search-filter input, .search-filter select { padding: 8px 12px; border-radius: 20px; border: 1px solid #cbd5e1; font-size: 0.85rem; outline: none; min-width: 120px; }
+        .action-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+        .btn { padding: 8px 15px; border-radius: 20px; border: none; font-weight: bold; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .btn-primary { background: #1e3c5c; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-purple { background: #8b5cf6; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #b0c4de; color: #1e3c5c; }
+        
+        .table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid #d9e1ec; }
+        table { width: 100%; border-collapse: collapse; min-width: 1500px; table-layout: fixed; }
+        th { background: #1e3c5c; color: white; font-size: 0.8rem; padding: 10px 5px; text-align: left; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 8px 5px; background: white; font-size: 0.85rem; vertical-align: middle; }
+        
+        /* Column Widths */
+        th:nth-child(1), td:nth-child(1) { width: 130px; }
+        th:nth-child(2), td:nth-child(2) { width: 100px; }
+        th:nth-child(3), td:nth-child(3) { width: 100px; }
+        th:nth-child(4), td:nth-child(4) { width: 100px; }
+        th:nth-child(5), td:nth-child(5) { width: 90px; }
+        th:nth-child(6), td:nth-child(6) { width: 150px; }
+        th:nth-child(7), td:nth-child(7) { width: 130px; }
+        th:nth-child(8), td:nth-child(8) { width: 150px; }
+        th:nth-child(9), td:nth-child(9) { width: 90px; }
+        th:nth-child(10), td:nth-child(10) { width: 200px; }
+        th:nth-child(11), td:nth-child(11) { width: 50px; }
+
+        .cell-input { width: 100%; border: 1px solid transparent; background: transparent; padding: 5px; border-radius: 5px; font-size: 0.85rem; resize: vertical; font-family: inherit; }
+        .cell-input:focus { border-color: #e67e22; outline: none; background: white; }
+        textarea.cell-input { min-height: 40px; }
+        
+        .photo-cell { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+        .photo-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 5px; border: 1px solid #cbd5e1; cursor: pointer; }
+        .photo-btn { background: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 5px; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .icon-btn { background: none; border: none; font-size: 1.1rem; color: #b91c1c; cursor: pointer; }
+
+        .fullscreen-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .fullscreen-modal img { max-width: 95vw; max-height: 95vh; border-radius: 10px; object-fit: contain; }
+        .close-modal { position: absolute; top: 20px; right: 30px; color: white; font-size: 2.5rem; cursor: pointer; }
+
+        #printSection { display: none; padding: 10px; background: white; font-size: 10px; }
+        .print-header { text-align: center; margin-bottom: 10px; }
+        .print-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .print-table th, .print-table td { border: 1px solid #333; padding: 4px; text-align: left; vertical-align: top; word-wrap: break-word; }
+        .print-table th { background: #e2e8f0 !important; color: #000; font-size: 10px; }
+        .print-photo { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; margin: 2px; border: 1px solid #999; }
+
+        @media print {
+            @page { size: landscape; margin: 8mm; }
+            body { background: white; padding: 0; }
+            .app-container, .toast, .fullscreen-modal { display: none !important; }
+            #printSection { display: block !important; }
+            .print-table { font-size: 9px; }
+            .print-table th { background: #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; }
+        }
+        
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e3c5c; color: white; padding: 10px 20px; border-radius: 20px; z-index: 1200; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <h1><i class="fas fa-industry"></i> Daily Inspection Tracker</h1>
+
+    <!-- شريط التاريخ -->
+    <div class="date-bar">
+        <i class="fas fa-calendar-alt"></i>
+        <span>تاريخ الفحص (Inspection Date):</span>
+        <input type="date" id="inspectionDate" onchange="changeDate()">
+        <span style="font-size: 0.8rem; font-weight: normal; color: #64748b; margin-right: auto;">* تغيير التاريخ يفتح صفحة يوم جديد</span>
+    </div>
+
+    <div class="toolbar">
+        <div class="search-filter">
+            <input type="text" id="searchInput" placeholder="🔍 Search...">
+            <select id="statusFilter">
+                <option value="all">All statuses</option>
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Closed">Closed</option>
+            </select>
+        </div>
+        <div class="action-buttons">
+            <button class="btn btn-primary" id="addRowBtn"><i class="fas fa-plus"></i> Add</button>
+            <button class="btn btn-success" id="exportExcelBtn"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn btn-purple" id="printReportBtn"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="btn btn-outline" id="exportBtn"><i class="fas fa-save"></i> Backup</button>
+            <button class="btn btn-outline" id="importBtn"><i class="fas fa-upload"></i> Restore</button>
+            <input type="file" id="importFile" accept=".json" style="display:none">
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="inspectionTable">
+            <thead>
+                <tr>
+                    <th>Equipment</th>
+                    <th>Eq. Code</th>
+                    <th>SAP Notif.</th>
+                    <th>Location</th>
+                    <th>Date</th>
+                    <th>Problem</th>
+                    <th>Root Cause</th>
+                    <th>Corrective Action</th>
+                    <th>Status</th>
+                    <th>Photos</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="printSection">
+    <div class="print-header">
+        <h2>Cement Plant - Inspection Report (<span id="printDateDisplay"></span>)</h2>
+    </div>
+    <table class="print-table">
+        <thead>
+            <tr>
+                <th style="width: 10%;">Equipment</th>
+                <th style="width: 7%;">Eq. Code</th>
+                <th style="width: 8%;">SAP Notif.</th>
+                <th style="width: 8%;">Location</th>
+                <th style="width: 7%;">Date</th>
+                <th style="width: 15%;">Problem</th>
+                <th style="width: 10%;">Root Cause</th>
+                <th style="width: 15%;">Corrective Action</th>
+                <th style="width: 7%;">Status</th>
+                <th style="width: 13%;">Photos</th>
+            </tr>
+        </thead>
+        <tbody id="printTableBody"></tbody>
+    </table>
+</div>
+
+<div id="photoModal" class="fullscreen-modal">
+    <span class="close-modal">&times;</span>
+    <img id="modalImage" src="" alt="Full size photo">
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+    const DB_NAME = 'CementInspectionDB', STORE_RECORDS = 'records', STORE_PHOTOS = 'photos';
+    let db = null, records = [], photoCache = new Map();
+    let currentViewDate = ''; // المتغير اللي بيحمل تاريخ اليوم المفتوح
+    
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_RECORDS)) db.createObjectStore(STORE_RECORDS, { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains(STORE_PHOTOS)) db.createObjectStore(STORE_PHOTOS, { keyPath: 'id', autoIncrement: true });
+    };
+    request.onsuccess = e => { db = e.target.result; init(); };
+
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2500); }
+    function esc(t) { return t ? String(t).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])) : ''; }
+    function blobToUrl(blob) { return new Promise(res => { const r = new FileReader(); r.onloadend = () => res(r.result); r.readAsDataURL(blob); }); }
+
+    function getRecords() { return new Promise(res => { const r = db.transaction(STORE_RECORDS).objectStore(STORE_RECORDS).getAll(); r.onsuccess = () => res(r.result); }); }
+    function putRecord(rec) { return new Promise(res => { const r = db.transaction(STORE_RECORDS, 'readwrite').objectStore(STORE_RECORDS).put(rec); r.onsuccess = () => res(r.result); }); }
+    function delRecord(id) { return new Promise(res => { const tx = db.transaction([STORE_RECORDS, STORE_PHOTOS], 'readwrite'); tx.objectStore(STORE_RECORDS).delete(id); tx.oncomplete = () => res(); }); }
+    function putPhoto(blob) { return new Promise(res => { const r = db.transaction(STORE_PHOTOS, 'readwrite').objectStore(STORE_PHOTOS).add({data: blob}); r.onsuccess = () => res(r.result); }); }
+    function getPhoto(id) { return new Promise(res => { const r = db.transaction(STORE_PHOTOS).objectStore(STORE_PHOTOS).get(id); r.onsuccess = () => res(r.result); }); }
+
+    async function compressImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scale = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.6);
+                };
+            };
+        });
+    }
+
+    // دالة تغيير التاريخ
+    function changeDate() {
+        currentViewDate = document.getElementById('inspectionDate').value;
+        render();
+    }
+
+    async function render() {
+        records = (await getRecords()).sort((a,b)=>b.id-a.id);
+        
+        for (let rec of records) {
+            if (rec.photoIds) for (let pid of rec.photoIds) {
+                if (!photoCache.has(pid)) {
+                    const p = await getPhoto(pid);
+                    if (p) photoCache.set(pid, await blobToUrl(p.data));
+                }
+            }
+        }
+
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        const stat = document.getElementById('statusFilter').value;
+        
+        // هنا الفلترة الأساسية: بنعرض بس السجلات اللي تاريخها يساوي التاريخ اللي فوق
+        const filtered = records.filter(r => {
+            const matchDate = r.date === currentViewDate;
+            const matchSearch = (r.equipment + ' ' + r.eqCode + ' ' + r.sapNotif + ' ' + r.problem + ' ' + r.location).toLowerCase().includes(term);
+            const matchStat = stat === 'all' || r.status === stat;
+            return matchDate && matchSearch && matchStat;
+        });
+
+        const tbody = document.getElementById('tableBody');
+        if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px;">لا توجد سجلات لهذا اليوم (${currentViewDate}). اضغط Add لإضافة جديد.</td></tr>`; return; }
+
+        tbody.innerHTML = filtered.map(rec => {
+            let ph = '';
+            if (rec.photoIds) rec.photoIds.forEach(pid => { if (photoCache.has(pid)) ph += `<img src="${photoCache.get(pid)}" class="photo-thumb" onclick="window.openPhoto(this.src)">`; });
+            ph += `<button class="photo-btn" onclick="window.addPhoto(${rec.id}, 'camera')"><i class="fas fa-camera"></i></button><button class="photo-btn" onclick="window.addPhoto(${rec.id}, 'gallery')"><i class="fas fa-images"></i></button>`;
+
+            return `
+            <tr data-id="${rec.id}">
+                <td><input class="cell-input" value="${esc(rec.equipment)}" onchange="window.update(${rec.id}, 'equipment', this.value)"></td>
+                <td><input class="cell-input" value="${esc(rec.eqCode)}" onchange="window.update(${rec.id}, 'eqCode', this.value)"></td>
+                <td><input class="cell-input" value="${esc(rec.sapNotif)}" onchange="window.update(${rec.id}, 'sapNotif', this.value)"></td>
+                <td><input class="cell-input" value="${esc(rec.location)}" onchange="window.update(${rec.id}, 'location', this.value)"></td>
+                <td><input class="cell-input" type="date" value="${rec.date}" onchange="window.update(${rec.id}, 'date', this.value)"></td>
+                <td><textarea class="cell-input" onchange="window.update(${rec.id}, 'problem', this.value)">${esc(rec.problem)}</textarea></td>
+                <td><textarea class="cell-input" onchange="window.update(${rec.id}, 'rootCause', this.value)">${esc(rec.rootCause)}</textarea></td>
+                <td><textarea class="cell-input" onchange="window.update(${rec.id}, 'correctiveAction', this.value)">${esc(rec.correctiveAction)}</textarea></td>
+                <td>
+                    <select class="cell-input" onchange="window.update(${rec.id}, 'status', this.value)">
+                        <option value="Open" ${rec.status==='Open'?'selected':''}>Open</option>
+                        <option value="In Progress" ${rec.status==='In Progress'?'selected':''}>In Progress</option>
+                        <option value="Closed" ${rec.status==='Closed'?'selected':''}>Closed</option>
+                    </select>
+                </td>
+                <td><div class="photo-cell">${ph}</div></td>
+                <td><button class="icon-btn" onclick="window.del(${rec.id})"><i class="fas fa-trash-alt"></i></button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.update = async (id, field, val) => {
+        const rec = records.find(r => r.id === id);
+        if (rec) { rec[field] = val; await putRecord(rec); }
+    };
+
+    window.del = async (id) => {
+        if (confirm('Delete this record?')) { await delRecord(id); await render(); toast('Deleted'); }
+    };
+
+    window.addPhoto = (id, src) => {
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        if (src === 'camera') inp.capture = 'environment';
+        inp.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                toast('Compressing...');
+                const compressedBlob = await compressImage(file);
+                const pid = await putPhoto(compressedBlob);
+                const rec = records.find(r => r.id === id);
+                if (!rec.photoIds) rec.photoIds = [];
+                rec.photoIds.push(pid);
+                await putRecord(rec);
+                photoCache.set(pid, await blobToUrl(compressedBlob));
+                await render();
+                toast('Photo added');
+            }
+        };
+        inp.click();
+    };
+
+    window.openPhoto = (src) => { document.getElementById('modalImage').src = src; document.getElementById('photoModal').style.display = 'flex'; };
+    document.querySelector('.close-modal').onclick = () => document.getElementById('photoModal').style.display = 'none';
+
+    // إضافة سجل جديد (بياخد تاريخ اليوم اللي إنت واقف عليه)
+    document.getElementById('addRowBtn').onclick = async () => {
+        await putRecord({ 
+            equipment: '', eqCode: '', sapNotif: '', location: '', 
+            date: currentViewDate, // التاريخ بياخده من الشريط اللي فوق
+            problem: '', rootCause: '', correctiveAction: '', status: 'Open', photoIds: [] 
+        });
+        await render(); toast('Added');
+    };
+
+    document.getElementById('exportExcelBtn').onclick = async () => {
+        const data = (await getRecords()).filter(r => r.date === currentViewDate);
+        if(!data.length) { toast('No data for this day'); return; }
+        let csv = "\uFEFFEquipment,Eq Code,SAP Notif,Location,Date,Problem,Root Cause,Action,Status,Photos\n";
+        data.forEach(r => {
+            const row = [r.equipment, r.eqCode, r.sapNotif, r.location, r.date, r.problem, r.rootCause, r.correctiveAction, r.status, r.photoIds ? r.photoIds.length : 0];
+            csv += row.map(v => `"${(v||'').toString().replace(/"/g, '""')}"`).join(',') + '\n';
+        });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = `Report_${currentViewDate}.csv`; a.click();
+        toast('Excel exported');
+    };
+
+    document.getElementById('printReportBtn').onclick = async () => {
+        const data = (await getRecords()).filter(r => r.date === currentViewDate);
+        if(!data.length) { toast('No data for this day'); return; }
+        
+        document.getElementById('printDateDisplay').textContent = currentViewDate;
+        const tbody = document.getElementById('printTableBody');
+        tbody.innerHTML = data.map(r => {
+            let imgs = '';
+            if (r.photoIds) r.photoIds.forEach(pid => { if (photoCache.has(pid)) imgs += `<img src="${photoCache.get(pid)}" class="print-photo">`; });
+            return `<tr>
+                <td>${esc(r.equipment)}</td>
+                <td>${esc(r.eqCode)}</td>
+                <td>${esc(r.sapNotif)}</td>
+                <td>${esc(r.location)}</td>
+                <td>${r.date}</td>
+                <td>${esc(r.problem)}</td>
+                <td>${esc(r.rootCause)}</td>
+                <td>${esc(r.correctiveAction)}</td>
+                <td>${r.status}</td>
+                <td>${imgs || 'None'}</td>
+            </tr>`;
+        }).join('');
+        
+        document.querySelector('.app-container').style.display = 'none';
+        document.getElementById('printSection').style.display = 'block';
+        setTimeout(() => {
+            window.print();
+            document.getElementById('printSection').style.display = 'none';
+            document.querySelector('.app-container').style.display = 'flex';
+        }, 500);
+    };
+
+    document.getElementById('exportBtn').onclick = async () => {
+        const recs = await getRecords(), photos = {};
+        for (let r of recs) if (r.photoIds) for (let p of r.photoIds) photos[p] = photoCache.get(p);
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({records: recs, photos})], {type: 'application/json'})); a.download = 'Full_Backup.json'; a.click();
+        toast('Backup saved');
+    };
+
+    document.getElementById('importFile').onchange = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            const obj = JSON.parse(ev.target.result);
+            for (let [pid, url] of Object.entries(obj.photos || {})) {
+                const blob = await (await fetch(url)).blob();
+                const newId = await putPhoto(blob);
+                photoCache.set(newId, url);
+                obj.records.forEach(r => { if(r.photoIds) r.photoIds = r.photoIds.map(id => id == pid ? newId : id); });
+            }
+            for (let r of obj.records) { delete r.id; await putRecord(r); }
+            await render(); toast('Restored successfully');
+        };
+        reader.readAsText(file);
+    };
+
+    document.getElementById('searchInput').oninput = render;
+    document.getElementById('statusFilter').onchange = render;
+
+    // التشغيل الأولي
+    async function init() {
+        // بنجيب تاريخ النهاردة تلقائياً
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('inspectionDate').value = today;
+        currentViewDate = today;
+        await render();
+    }
+</script>
+</body>
+</html>
